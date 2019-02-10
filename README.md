@@ -9,7 +9,7 @@
 ```python
 from GPyBCM import BCM
 
-bcm = BCM(x_train, np.array(y_train).reshape(-1,1), M=20,N=200) 
+bcm = BCM(x_train, y_train, M=50,N=250) 
 # M: number of GP experts, N: size of each expert's training set 
 bcm.optimize()
 
