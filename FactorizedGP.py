@@ -47,9 +47,9 @@ class FactorizedGP(Model):
 
         """ Shared objects between processes """
 
-        self.Xmap = np.memmap('_fgp_x_map',dtype='float64',mode='w+',
+        self.Xmap = np.memmap('_fgp_x_map',dtype='float32',mode='w+',
             shape=X.shape)
-        self.Ymap = np.memmap('_fgp_y_map',dtype='float64',mode='w+',
+        self.Ymap = np.memmap('_fgp_y_map',dtype='float32',mode='w+',
             shape=Y.shape)
 
         self.Xmap[:] = X
@@ -79,10 +79,10 @@ class FactorizedGP(Model):
         self.link_parameter(self.base)
 
     def _log_likelihood(self,k):
-        _x = np.memmap('_fgp_x_map',dtype='float64',mode='r',shape=self._X_shape)
-        _y = np.memmap('_fgp_y_map',dtype='float64',mode='r',shape=self._Y_shape)
+        _x = self.Xmap[self.partition[k],:]
+        _y = self.Ymap[self.partition[k],:]
 
-        self.base.set_XY(_x[self.partition[k]],_y[self.partition[k]])
+        self.base.set_XY(_x,_y)
         
         return self.base.log_likelihood()
         
@@ -104,12 +104,12 @@ class FactorizedGP(Model):
         return sum(res)
 
     def _log_likelihood_gradients_k(self,k):
-        _x = np.memmap('_fgp_x_map',dtype='float64',mode='r',shape=self._X_shape)
-        _y = np.memmap('_fgp_y_map',dtype='float64',mode='r',shape=self._Y_shape)
+        _x = self.Xmap[self.partition[k],:]
+        _y = self.Ymap[self.partition[k],:]
 
-        self.base.set_XY(_x[self.partition[k]],_y[self.partition[k]])
+        self.base.set_XY(_x,_y)
 
-        return (self.base._log_likelihood_gradients())
+        return self.base._log_likelihood_gradients()
         
     def _log_likelihood_gradients(self):
         # called by GPy.core.Model during optimization
@@ -130,7 +130,7 @@ class FactorizedGP(Model):
         raise NotImplementedError 
     
     
-class GPyBCM(FactorizedGP):
+class BCM(FactorizedGP):
     """
     Bayesian Committee Machines 
 
@@ -157,19 +157,19 @@ class GPyBCM(FactorizedGP):
                  verbose=0,N=None,kern=None,meanfunc=None,
                  model='rBCM'):
     
-        super(GPyBCM,self).__init__(X,Y,M,partition_type,verbose,
+        super(BCM,self).__init__(X,Y,M,partition_type,verbose,
              N,kern,meanfunc)
         
         self.model = model 
 
 
-    def predict_k(self,k,x_new):
-        _x = np.memmap('_fgp_x_map',dtype='float64',mode='r',shape=self._X_shape)
-        _y = np.memmap('_fgp_y_map',dtype='float64',mode='r',shape=self._Y_shape)
+    def predict_k(self,k,x_new,full_cov=False):
+        _x = self.Xmap[self.partition[k],:]
+        _y = self.Ymap[self.partition[k],:]
 
-        self.base.set_XY(_x[self.partition[k]],_y[self.partition[k]])
+        self.base.set_XY(_x,_y)
 
-        return self.base.predict(x_new,full_cov=False)
+        return self.base.predict(x_new,full_cov=full_cov)
         
     def predict(self,x_new):
         assert x_new.ndim == 2
@@ -191,7 +191,7 @@ class GPyBCM(FactorizedGP):
                     
             return pred_mean
         
-        if self.model == 'BCM':
+        if self.model == 'BCM' or self.model == 'PoE':
             """ Tresp, V. (2000). A Bayesian committee machine,
             Neural computation, 12(11), 2719-2741 """
 
