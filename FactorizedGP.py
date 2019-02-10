@@ -113,7 +113,6 @@ class FactorizedGP(Model):
         
     def _log_likelihood_gradients(self):
         # called by GPy.core.Model during optimization
-        
         pool = mp.Pool(4)
 
         res = pool.map(self._log_likelihood_gradients_k,range(self.M))
@@ -121,7 +120,9 @@ class FactorizedGP(Model):
         pool.close()
         pool.join()
 
-        print(sum(res))
+        if self.verbose >= 2:
+            print(sum(res))
+            
         return sum(res)
     
     def predict(self, x_new):
