@@ -1,13 +1,13 @@
-from FactorizedGP import BCM 
+from GPyBCM import BCM 
 import numpy as np
 
 if __name__ == '__main__':
 
-	N = 5000
+	N = 10000
 	x_train = np.random.normal(0,1,(N,5)) # 5 features 
 	y_train = [ np.cos(np.linalg.norm(x)) for x in x_train]
 
-	bcm = BCM(x_train, np.array(y_train).reshape(-1,1), M=20,N=200,verbose=1) # default model: rBCM 
+	bcm = BCM(x_train, np.array(y_train).reshape(-1,1), M=20,N=200,verbose=2) # default model: rBCM 
 
 	
 	print('Optimizing hyperparameters..')
