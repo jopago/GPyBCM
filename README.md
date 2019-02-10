@@ -1,3 +1,22 @@
+
+
+# GPyBCM
+> Bayesian Committee Machines for large-scale Gaussian Process regression with GPy and multiprocessing
+
+[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+
+# Example 
+```python
+from GPyBCM import BCM
+
+bcm = BCM(x_train, np.array(y_train).reshape(-1,1), M=20,N=200) 
+# M: number of GP experts, N: size of each expert's training set 
+bcm.optimize()
+
+y_pred = bcm.predict(x_test)
+```
+
+
 # Bayesian Committee Machines
 
 Gaussian Process regression scales poorly with dimension as it requires to invert an NxN symmetric matrix, where N is the size of the training set. Bayesian Committee Machines (BCM) are ensemble methods that aggregate individual GP predictions (Tresp, 2000) and allow distributed training (Deisenroth et al., 2015) and prediction. 
@@ -7,6 +26,8 @@ A BCM is made of M "experts" sharing the same kernel and hyperparemeters but eac
 ![Alt text](https://latex.codecogs.com/gif.latex?p%28y%20%5Cmid%20X%2C%5Ctheta%29%20%3D%20%5Cprod_%7Bi%3D1%7D%20p%5Cleft%28y_i%20%5Cmid%20X_i%2C%20%5Ctheta%29)
 
 Thus the log-likelihood is just a sum of individual likelihood and the same goes for its gradients, meaning that during training, i.e finding the best hyperparameters, gradients can be computed in parallel. 
+
+
 
 
 # References 
