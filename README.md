@@ -3,7 +3,7 @@
 # GPyBCM
 > Bayesian Committee Machines for large-scale Gaussian Process regression with GPy and multiprocessing
 
-[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](LICENSE)
 
 # Example 
 ```python
