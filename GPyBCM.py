@@ -4,29 +4,29 @@ import numpy as np
 import multiprocessing as mp 
 
 class FactorizedGP(Model):
-    """ 
-    A general model for mixtures of Gaussian Processes where
-    the training is obtained via a factorized likelihood:
-
-    p(y | x, theta) = prod_{k=1}^{M} p(y_k | x_k, theta_k) 
-
-    here we make the usual assumptions (Liu et al. 2018) theta_k = theta for
-    all k, i.e all GP have the same hyperparameters. The log-likelihood
-    and its gradients are computed as the sum of the individual expert
-    likelihoods 
-
-
-    :param M: the number of experts 
-    :param X: training set
-    :param Y: training targets
-    :param partition_type: how to partition data among experts
-    :param kern: the covariance function of experts (if None, the kernel is RBF ARD)
-    :param meanfunc: the mean function of experts
-
-    """
 
     def __init__(self,X,Y, M=10, partition_type='random',
                  verbose=0, N=None,kern=None,meanfunc=None):
+        """ 
+        A general model for mixtures of Gaussian Processes where
+        the training is obtained via a factorized likelihood:
+
+        p(y | x, theta) = prod_{k=1}^{M} p(y_k | x_k, theta_k) 
+
+        here we make the usual assumptions (Liu et al. 2018) theta_k = theta for
+        all k, i.e all GP have the same hyperparameters. The log-likelihood
+        and its gradients are computed as the sum of the individual expert
+        likelihoods 
+
+
+        :param M: the number of experts 
+        :param X: training set
+        :param Y: training targets
+        :param partition_type: how to partition data among experts
+        :param kern: the covariance function of experts (if None, the kernel is RBF ARD)
+        :param meanfunc: the mean function of experts
+
+        """
         super(FactorizedGP, self).__init__('FactorizedGP')
 
 
@@ -113,7 +113,7 @@ class FactorizedGP(Model):
         
     def _log_likelihood_gradients(self):
         # called by GPy.core.Model during optimization
-        pool = mp.Pool(4)
+        pool = mp.Pool()
 
         res = pool.map(self._log_likelihood_gradients_k,range(self.M))
 
@@ -132,31 +132,31 @@ class FactorizedGP(Model):
     
     
 class BCM(FactorizedGP):
-    """
-    Bayesian Committee Machines 
-
-    Several aggregation strategies exist, currently only the ones by
-    Tresp (2000) and Deisenroth & Ng (2015) are implemented.
-
-    :param M: the number of experts 
-    :param X: training set
-    :param Y: training targets
-    :param partition_type: how to partition data among experts
-    :param kern: the covariance function of experts (if None, the kernel is RBF ARD)
-    :param meanfunc: the mean function of experts
-
-    :param model: type of aggregation to use: 'mean' take the
-    average of predictions, 'BCM' is the aggregation in Tresp (2000)
-    where each gp prediction is weighted by its variance, 'rBCM' 
-    is the Robust Bayesian Committee Machine of Deisenroth & Ng where
-    differential entropy is used to improve weighing of experts.
-
-    .. todo: Implement Generalized RBCM (Liu et al, 2018)
-    """
-
+    
     def __init__(self, X, Y, M, partition_type='random',
                  verbose=0,N=None,kern=None,meanfunc=None,
                  model='rBCM'):
+        """
+        Bayesian Committee Machines 
+
+        Several aggregation strategies exist, currently only the ones by
+        Tresp (2000) and Deisenroth & Ng (2015) are implemented.
+
+        :param M: the number of experts 
+        :param X: training set
+        :param Y: training targets
+        :param partition_type: how to partition data among experts
+        :param kern: the covariance function of experts (if None, the kernel is RBF ARD)
+        :param meanfunc: the mean function of experts
+
+        :param model: type of aggregation to use: 'mean' take the
+        average of predictions, 'BCM' is the aggregation in Tresp (2000)
+        where each gp prediction is weighted by its variance, 'rBCM' 
+        is the Robust Bayesian Committee Machine of Deisenroth & Ng where
+        differential entropy is used to improve weighing of experts.
+
+        .. todo: Implement Generalized RBCM (Liu et al, 2018)
+        """
     
         super(BCM,self).__init__(X,Y,M,partition_type,verbose,
              N,kern,meanfunc)
@@ -232,6 +232,25 @@ class BCM(FactorizedGP):
                 if self.verbose > 0:
                     print( '(rBCM) Computing prediction ' + str(k))
                 
+            return pred_mean / C
+
+        if self.model == 'gpoe':
+            # almost the same as rBCM but without correction to prior variance 
+
+            prior_var = np.diag(self.base.kern.K(x_new)).reshape(-1,1)+self.base.likelihood.variance
+            C = np.zeros(prior_var.shape)
+
+            for k in range(self.M):
+                _pred = self.predict_k(k,x_new)
+
+                beta_k = 0.5*(np.log(prior_var)-np.log(_pred[1])).reshape(-1,1) 
+                C += beta_k / _pred[1]
+
+                pred_mean += _pred[0]*beta_k / _pred[1]
+
+                if self.verbose > 0:
+                    print('(GPoE) Computing prediction ' + str(k))
+
             return pred_mean / C
 
     def to_dict(self):
